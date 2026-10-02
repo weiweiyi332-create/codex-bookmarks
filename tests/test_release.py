@@ -58,11 +58,23 @@ class ReleaseTests(unittest.TestCase):
     def test_http_fixture_read_save_and_reject(self):
         with self.request('/api/list') as r:
             items = json.load(r)['items']
-        self.assertEqual(len(items), 3)
+        self.assertEqual(len(items), 6)
         self.assertTrue(all(x['status'] == 'ready' for x in items))
-        with self.request('/api/save', 'POST', {'id': items[0]['id'], 'title': '演示测试', 'tags': ['演示'], 'note': '测试笔记'}) as r:
+        self.assertEqual(sum(x['topic'] == '情绪建构论' for x in items), 2)
+        with self.request('/api/save', 'POST', {'id': items[0]['id'], 'title': '演示测试', 'tags': ['演示'], 'note': '测试笔记', 'topic': '我的专题'}) as r:
             self.assertTrue(json.load(r)['ok'])
         self.assertTrue((self.data / 'annotations.json').exists())
+        with self.request('/api/list') as r:
+            changed = next(x for x in json.load(r)['items'] if x['id'] == items[0]['id'])
+        self.assertEqual(changed['topic'], '我的专题')
+        self.assertEqual(changed['note'], '测试笔记')
+        self.assertTrue(changed['topic_manual'])
+        with self.request('/api/save', 'POST', {'id': items[0]['id'], 'title': '演示测试', 'tags': ['演示'], 'note': '测试笔记', 'topic': ''}) as r:
+            self.assertTrue(json.load(r)['ok'])
+        with self.request('/api/list') as r:
+            restored = next(x for x in json.load(r)['items'] if x['id'] == items[0]['id'])
+        self.assertEqual(restored['topic'], 'EEG 基础模型')
+        self.assertFalse(restored['topic_manual'])
         for headers in ({'auth': False}, {'origin': 'https://example.org'}):
             with self.assertRaises(urllib.error.HTTPError) as error:
                 self.request('/api/list', **headers)
@@ -84,7 +96,7 @@ class ReleaseTests(unittest.TestCase):
         responses = [json.loads(x)['result'] for x in result.stdout.splitlines()]
         self.assertEqual(len(responses[1]['tools']), 4)
         self.assertIn('<!doctype html>', responses[2]['contents'][0]['text'])
-        self.assertEqual(len(responses[3]['structuredContent']['items']), 3)
+        self.assertEqual(len(responses[3]['structuredContent']['items']), 6)
 
 if __name__ == '__main__':
     unittest.main()

@@ -26,7 +26,7 @@ def execute(name, args):
     if name == 'save_annotation':
         if APP.item(args.get('id')) is None:
             raise ValueError('此收藏已被取消，请刷新列表')
-        APP.save(args['id'], args.get('title', ''), args.get('tags', []), args.get('note', ''))
+        APP.save(args['id'], args.get('title', ''), args.get('tags', []), args.get('note', ''), args.get('topic'))
         return {'ok': True}
     if name == 'open_source':
         item = APP.item(args.get('id'))
@@ -100,7 +100,7 @@ def mcp():
     schemas = {
         'open_bookmarks': {'type': 'object', 'properties': {}, 'additionalProperties': False},
         'list_bookmarks': {'type': 'object', 'properties': {}, 'additionalProperties': False},
-        'save_annotation': {'type': 'object', 'properties': {'id': {'type': 'string'}, 'title': {'type': 'string'}, 'tags': {'type': 'array', 'items': {'type': 'string'}}, 'note': {'type': 'string'}}, 'required': ['id']},
+        'save_annotation': {'type': 'object', 'properties': {'id': {'type': 'string'}, 'title': {'type': 'string'}, 'tags': {'type': 'array', 'items': {'type': 'string'}}, 'note': {'type': 'string'}, 'topic': {'type': 'string', 'maxLength': 80, 'description': '自定义主题；空文字恢复自动归类，省略则保留原主题'}}, 'required': ['id']},
         'open_source': {'type': 'object', 'properties': {'id': {'type': 'string'}}, 'required': ['id']},
     }
     for line in sys.stdin:
@@ -110,7 +110,7 @@ def mcp():
                 continue
             method, p = req.get('method'), req.get('params', {})
             if method == 'initialize':
-                result = {'protocolVersion': p.get('protocolVersion', '2024-11-05'), 'capabilities': {'tools': {}, 'resources': {}}, 'serverInfo': {'name': 'codex-bookmarks', 'version': '0.1.1'}}
+                result = {'protocolVersion': p.get('protocolVersion', '2024-11-05'), 'capabilities': {'tools': {}, 'resources': {}}, 'serverInfo': {'name': 'codex-bookmarks', 'version': '0.2.0'}}
             elif method == 'ping':
                 result = {}
             elif method == 'tools/list':

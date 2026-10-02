@@ -9,6 +9,7 @@ import re
 import sqlite3
 import threading
 import time
+import unicodedata
 from pathlib import Path
 
 RULES = {
@@ -19,6 +20,36 @@ RULES = {
     '文献阅读': ['论文', '文献', 'doi', '文章', '速读', 'paper'],
     '工具与软件': ['codex', '插件', '软件', '安装', '收藏', '代码', '配置'],
 }
+
+# Specific topics precede broad categories. Question matches take precedence
+# over answer matches so an incidental comparison does not move a bookmark.
+TOPICS = {
+    '情绪建构论': ['情绪建构论', '情绪构建论', '建构情绪', '建构论', '构建论', 'constructed emotion', 'constructionist', 'barrett', '巴雷特'],
+    'EEG 基础模型': ['labram', 'neurolm', '脑电基础模型', 'eeg foundation', 'eeg大模型', '脑电大模型'],
+    '跨被试情绪识别': ['跨被试', 'cross-subject', 'cross subject', '被试适应', '被试泛化'],
+    'EEG 情绪识别': ['脑电情绪', '脑电情感', 'eeg emotion', 'eeg情绪', 'eeg情感', 'seed'],
+    'GitHub 与开源': ['github', '开源', 'gitlab'],
+    'Codex 使用与工具': ['codex', '收藏夹', 'skill', '插件'],
+    'Python 学习': ['python', 'python学习'],
+    '知识管理与笔记': ['知识库', '读书笔记', '知识管理', '笔记整理'],
+    '旅行规划': ['旅行', '旅游', '行李', '出游'],
+}
+
+def normalize_topic(value):
+    value = ' '.join(unicodedata.normalize('NFKC', value).split())
+    for topic, aliases in TOPICS.items():
+        if value.casefold() in {topic.casefold(), *(alias.casefold() for alias in aliases)}:
+            return topic
+    return value
+
+def suggest_topic(question, answer, title=''):
+    for text in (readable_question(question) + '\n' + title, answer):
+        text = text.casefold()
+        for topic, words in TOPICS.items():
+            if any(re.search(r'(?<![a-z])' + re.escape(w) + r'(?![a-z])', text) if w.isascii() else w in text for w in words):
+                return topic
+    _, tags = organize(question, answer)
+    return tags[0] if tags[0] != '未分类' else '其他主题'
 
 def text_of(content):
     if isinstance(content, str):
@@ -109,7 +140,7 @@ class Library:
         except FileNotFoundError:
             return {}
 
-    def save(self, key, title, tags, note):
+    def save(self, key, title, tags, note, topic=None):
         if not re.fullmatch(r'[0-9a-f]{24}', key):
             raise ValueError('收藏标识无效')
         if not isinstance(tags, list) or any(not isinstance(x, str) for x in tags):
@@ -118,9 +149,17 @@ class Library:
             raise ValueError('标题和笔记必须是文字')
         if len(title) > 200 or len(note) > 20000 or len(tags) > 30:
             raise ValueError('内容过长')
+        if topic is not None and (not isinstance(topic, str) or len(topic) > 80):
+            raise ValueError('主题必须是 80 字以内的文字')
         with self.lock:
             meta = self._metadata()
-            meta[key] = {'title': title.strip(), 'tags': list(dict.fromkeys(x.strip()[:60] for x in tags if x.strip())), 'note': note}
+            meta[key] = {**meta.get(key, {}), 'title': title.strip(), 'tags': list(dict.fromkeys(x.strip()[:60] for x in tags if x.strip())), 'note': note}
+            if topic is not None:
+                topic = normalize_topic(topic)
+                if topic:
+                    meta[key]['topic'] = topic
+                else:
+                    meta[key].pop('topic', None)
             tmp = self.meta_path.with_suffix('.tmp')
             tmp.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding='utf-8')
             tmp.replace(self.meta_path)
@@ -177,11 +216,14 @@ class Library:
                                 found = {'question': '', 'answer': '', 'date': '', 'additional_prompts': [], 'status': 'unavailable'}
                             title, auto_tags = organize(found['question'], found['answer'])
                             custom = meta.get(key, {})
+                            auto_topic = suggest_topic(found['question'], found['answer'], custom.get('title', ''))
                             thread_title = (row['name'] or row['title']) if row else '未找到本机对话'
                             thread_title = readable_question(thread_title).replace('\n', ' ')[:100]
                             items.append({**found, 'id': key, 'thread_id': thread_id, 'turn_id': turn_id,
                                           'title': custom.get('title') or title or '暂时无法读取的收藏',
                                           'tags': custom.get('tags', auto_tags), 'auto_tags': auto_tags,
+                                          'topic': custom.get('topic') or auto_topic, 'auto_topic': auto_topic,
+                                          'topic_manual': bool(custom.get('topic')),
                                           'note': custom.get('note', ''), 'thread_title': thread_title,
                                           'url': 'codex://threads/' + thread_id,
                                           'display_question': readable_question(found['question'])})

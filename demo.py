@@ -16,6 +16,9 @@ def prepare_demo():
         ('如何把读书笔记整理成可检索的知识库？', '**先保留原始问题，再写自己的理解。**\n\n- 用主题标签归类。\n- 添加一句为什么收藏。\n- 每周回看最有价值的内容。'),
         ('帮我制定一个适合新手的 Python 学习计划', '**先做一个能运行的小项目。**\n\n第一周学习变量和函数，第二周读取文件，第三周制作个人待办工具。'),
         ('如何为周末旅行准备行李？', '**按场景列清单。**\n\n| 场景 | 物品 |\n|---|---|\n| 出行 | 证件、充电器 |\n| 日常 | 换洗衣物、水杯 |'),
+        ('情绪建构论强调的个体差异是什么意思？', '这是一条用于界面演示的虚构问答。\n\n**同主题的问题会集中展示。** 可以给回答加上自己的笔记。'),
+        ('Barrett 的情绪理论怎样理解情境？', '这是一条用于界面演示的虚构问答。\n\n可以在同一个主题里按时间阅读，也可以按标题寻找。'),
+        ('LaBraM 和 NeuroLM 有什么区别？', '这是一条用于界面演示的虚构问答。\n\n这类问题归入 **EEG 基础模型**，可在整理面板修改主题。'),
     ]
     groups = {}
     with sqlite3.connect(home / 'state_1.sqlite') as db:
@@ -24,7 +27,7 @@ def prepare_demo():
             thread, turn, user = f'demo-thread-{i}', f'demo-turn-{i}', f'demo-user-{i}'
             path = home / f'demo-{i}.jsonl'
             rows = [
-                {'timestamp': '2026-10-01T10:00:00Z', 'type': 'event_msg', 'payload': {'type': 'item_completed', 'turn_id': turn, 'item': {'type': 'UserMessage', 'id': user, 'content': [{'text': question}]}}},
+                {'timestamp': f'2026-09-{20+i:02}T10:00:00Z', 'type': 'event_msg', 'payload': {'type': 'item_completed', 'turn_id': turn, 'item': {'type': 'UserMessage', 'id': user, 'content': [{'text': question}]}}},
                 {'type': 'event_msg', 'payload': {'type': 'item_completed', 'turn_id': turn, 'item': {'type': 'AgentMessage', 'phase': 'final', 'content': [{'text': answer}]}}},
             ]
             path.write_text('\n'.join(json.dumps(r, ensure_ascii=False) for r in rows), encoding='utf-8')

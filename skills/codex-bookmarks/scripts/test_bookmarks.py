@@ -2,9 +2,31 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
-from bookmarks import Library, parse_turn, organize
+from bookmarks import Library, parse_turn, organize, suggest_topic
 
 class ParsingTests(unittest.TestCase):
+    def test_same_topic_across_wording_and_answer_fallback(self):
+        self.assertEqual(suggest_topic('情绪建构论如何理解个体差异？', ''), '情绪建构论')
+        self.assertEqual(suggest_topic('Barrett 的情绪理论是什么？', ''), '情绪建构论')
+        self.assertEqual(suggest_topic('这句话是什么意思？', '在 theory of constructed emotion 中讨论。'), '情绪建构论')
+        self.assertEqual(suggest_topic('NeuroLM 如何训练？', '也可以与情绪建构论作比较。'), 'EEG 基础模型')
+        self.assertEqual(suggest_topic('买什么床单？', '选择纯棉床单'), '其他主题')
+
+    def test_manual_topic_survives_legacy_save_and_can_reset(self):
+        with tempfile.TemporaryDirectory() as d:
+            lib = Library(codex_home=Path(d)/'no-codex', data_dir=Path(d)/'notes')
+            key = 'b' * 24
+            lib.save(key, '标题', ['标签'], '原有笔记', '  情绪构建论  ')
+            self.assertEqual(lib._metadata()[key]['topic'], '情绪建构论')
+            lib.save(key, '新标题', ['标签'], '原有笔记')
+            self.assertEqual(lib._metadata()[key]['topic'], '情绪建构论')
+            self.assertEqual(lib._metadata()[key]['note'], '原有笔记')
+            lib.save(key, '新标题', ['标签'], '原有笔记', '')
+            self.assertNotIn('topic', lib._metadata()[key])
+            for invalid in (['topic'], 3, '长' * 81):
+                with self.assertRaises(ValueError):
+                    lib.save(key, '标题', [], '笔记', invalid)
+
     def test_exact_user_and_final_only(self):
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / 'history.jsonl'

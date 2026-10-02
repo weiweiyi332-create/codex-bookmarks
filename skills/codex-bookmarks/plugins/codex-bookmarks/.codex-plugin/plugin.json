@@ -1,7 +1,7 @@
 {
   "name": "codex-bookmarks",
-  "version": "0.1.1",
-  "description": "集中阅读、搜索和整理本机 Codex 原生问答书签。",
+  "version": "0.2.0",
+  "description": "按主题分组、排序、阅读和整理本机 Codex 原生问答书签。",
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "收藏夹",

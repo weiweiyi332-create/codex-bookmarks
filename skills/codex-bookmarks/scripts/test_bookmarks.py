@@ -5,12 +5,32 @@ import unittest
 from bookmarks import Library, parse_turn, organize, suggest_topic
 
 class ParsingTests(unittest.TestCase):
-    def test_same_topic_across_wording_and_answer_fallback(self):
-        self.assertEqual(suggest_topic('情绪建构论如何理解个体差异？', ''), '情绪建构论')
-        self.assertEqual(suggest_topic('Barrett 的情绪理论是什么？', ''), '情绪建构论')
-        self.assertEqual(suggest_topic('这句话是什么意思？', '在 theory of constructed emotion 中讨论。'), '情绪建构论')
-        self.assertEqual(suggest_topic('NeuroLM 如何训练？', '也可以与情绪建构论作比较。'), 'EEG 基础模型')
-        self.assertEqual(suggest_topic('买什么床单？', '选择纯棉床单'), '其他主题')
+    def test_topic_uses_question_only(self):
+        self.assertEqual(suggest_topic('情绪建构论如何理解个体差异？'), '情绪建构论')
+        self.assertEqual(suggest_topic('Barrett 的情绪理论是什么？'), '情绪建构论')
+        self.assertEqual(suggest_topic('这句话是什么意思？'), '其他主题')
+        self.assertEqual(suggest_topic('NeuroLM 如何训练？'), 'EEG 基础模型')
+        self.assertEqual(suggest_topic('买什么床单？'), '其他主题')
+
+    def test_empty_topic_catalog_and_topic_only_update(self):
+        with tempfile.TemporaryDirectory() as d:
+            lib = Library(codex_home=Path(d)/'no-codex', data_dir=Path(d)/'notes')
+            self.assertEqual(lib.create_topic('  自己的专题  '), '自己的专题')
+            lib.create_topic('自己的专题')
+            self.assertEqual(lib.topic_catalog()['topics'], ['自己的专题'])
+            key = 'c' * 24
+            lib.save(key, '原始标题', ['保留标签'], '保留笔记')
+            lib.set_topic(key, '第二个专题')
+            entry = lib._metadata()[key]
+            self.assertEqual((entry['title'], entry['tags'], entry['note']), ('原始标题', ['保留标签'], '保留笔记'))
+            self.assertEqual(entry['topic'], '第二个专题')
+            self.assertTrue(entry['topic_reviewed'])
+            self.assertIn('第二个专题', lib.topic_catalog()['topics'])
+            lib.set_topic(key, '')
+            self.assertNotIn('topic', lib._metadata()[key])
+            self.assertTrue(lib._metadata()[key]['topic_reviewed'])
+            for value in (' ', 5, '长'*81):
+                with self.assertRaises(ValueError): lib.create_topic(value)
 
     def test_manual_topic_survives_legacy_save_and_can_reset(self):
         with tempfile.TemporaryDirectory() as d:

@@ -10,17 +10,22 @@ select{font:inherit;color:var(--text);background:var(--card);border:1px solid va
 .sortbar{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-top:12px}.sortbar label{display:flex;gap:6px;align-items:center;margin:0;font-size:12px;color:var(--muted)}
 .topic-group{margin-bottom:14px}.topic-heading{cursor:pointer;padding:12px 4px;color:var(--text);font-weight:650;position:sticky;top:0;background:var(--bg);z-index:1;overflow-wrap:anywhere}.topic-heading .muted{margin-left:8px;font-weight:400}
 .topic-caption{color:var(--accent);font-size:12px;margin-bottom:10px;overflow-wrap:anywhere}.sortbar button{font-size:12px;padding:7px 9px}.topic-content{padding-top:4px}
+dialog{max-height:88dvh;overflow:auto}#topicQuestion{max-height:180px;overflow:auto}.top{flex-wrap:wrap}
 </style></head><body>
-<header><div class="top"><span class="logo">▣</span><h1>收藏夹</h1><span class="spacer"></span><button id="refresh">刷新</button><button id="helpBtn" aria-label="收藏夹使用说明">使用说明</button></div><div class="sub"><span id="count">正在读取收藏…</span>　<span class="status" id="sync"></span></div></header>
+<header><div class="top"><span class="logo">▣</span><h1>收藏夹</h1><span class="spacer"></span><button id="newTopic">新建主题</button><button id="pendingTopics" disabled>待归类 · 0</button><button id="refresh">刷新</button><button id="helpBtn" aria-label="收藏夹使用说明">使用说明</button></div><div class="sub"><span id="count">正在读取收藏…</span>　<span class="status" id="sync"></span></div></header>
 <div class="toolbar"><input id="search" aria-label="搜索收藏" placeholder="搜索主题、问题、回答、标签或笔记…" autocomplete="off"><div class="sortbar"><label for="groupOrder">主题顺序 <select id="groupOrder"><option value="recent">最近更新</option><option value="name">主题名称</option><option value="count">收藏最多</option></select></label><label for="itemOrder">组内顺序 <select id="itemOrder"><option value="newest">最新在前</option><option value="oldest">最早在前</option><option value="title">问题标题</option></select></label><button id="collapseAll">收起全部</button><button id="expandAll">展开全部</button></div><div class="filters" id="filters" aria-label="按主题筛选"></div></div>
 <main class="layout" id="layout"><div class="list" id="list"></div><article class="detail" id="detail"><div class="empty">选择一条收藏，阅读完整问答。</div></article></main>
 <dialog id="editor"><h2>整理这条收藏</h2><form id="editForm"><label for="editTitle">标题</label><input id="editTitle" maxlength="200"><label for="editTopic">主题</label><input id="editTopic" list="topicOptions" maxlength="80" placeholder="留空使用自动主题"><datalist id="topicOptions"></datalist><div id="topicHint" class="muted"></div><label for="editTags">标签 · 用逗号分隔</label><input id="editTags"><label for="editNote">我的笔记</label><textarea id="editNote" maxlength="20000" placeholder="记下为什么收藏、以后可以用在哪里…"></textarea><div class="muted">这里的修改只影响收藏夹，不改变原始问答。</div><div class="dialog-actions"><button type="button" id="cancelEdit">取消</button><button class="primary" type="submit">保存</button></div></form></dialog>
-<dialog id="help"><h2>把值得保留的回答，集中在这里</h2><p>在 Codex 对话导航条的预览中点击原生书签，这里会在约 10 秒内同步。取消原生书签后，条目也会从列表中移除。</p><p>相关问答按主题放在一起，默认最近有新回答的主题在前、组内最新在前。可更改主题顺序和组内顺序，收起暂时不看的主题，或点击主题筛选。自动主题使用本地关键词规则；可在“整理 / 笔记”中修改主题，或留空恢复自动归类。搜索覆盖主题、问题、回答、标签和笔记。</p><p><strong>“打开原对话”目前会打开整段对话。</strong>尚未验证定位到单条回答的外部接口。可先“复制定位文字”，打开原对话后按 Ctrl+F 粘贴查找。</p><p>面板读取本机可用的 Codex 收藏。远程、云端或已缺失的记录可能无法读取。完整原文保留在原始记录中；收藏夹仅独立保存你的整理信息。无需外部模型服务。</p><div class="dialog-actions"><button id="closeHelp">知道了</button></div></dialog><div id="toast" role="status" aria-live="polite"></div>
+<dialog id="topicDialog"><h2 id="topicDialogTitle">更改主题</h2><div id="topicQuestion" class="question"></div><form id="topicForm"><label for="topicChoice">选择主题</label><select id="topicChoice" style="width:100%"></select><div id="newTopicField" class="hidden"><label for="inlineTopicName">新主题名称</label><input id="inlineTopicName" maxlength="80" placeholder="输入新主题名称"></div><div class="muted" style="margin-top:12px">自动主题只根据问题判断。更改主题不会修改标题、标签或笔记。</div><div class="dialog-actions"><button type="button" id="laterTopic">稍后再选</button><button class="primary" type="submit" id="confirmTopic">确定主题</button></div></form></dialog>
+<dialog id="createTopicDialog"><h2>新建主题</h2><form id="createTopicForm"><label for="newTopicName">主题名称</label><input id="newTopicName" required maxlength="80" placeholder="例如：情绪建构论、文献精读"><p class="muted">可以先建好主题，再把已有回答或新收藏放进来。</p><div class="dialog-actions"><button type="button" id="cancelNewTopic">取消</button><button class="primary" type="submit">创建主题</button></div></form></dialog>
+<dialog id="help"><h2>把值得保留的回答，集中在这里</h2><p>在 Codex 对话导航条的预览中点击原生书签，这里会在约 10 秒内同步。取消原生书签后，条目也会从列表中移除。</p><p>相关问答按主题放在一起，默认最近有新回答的主题在前、组内最新在前。可更改主题顺序和组内顺序，收起暂时不看的主题，或点击主题筛选。自动主题只根据问题使用本地关键词规则判断，不参考回答。新收藏同步后会弹出主题选择框，可选已有主题或新建；稍后也可以从“待归类”继续处理。可在“整理 / 笔记”中修改主题，或留空恢复自动归类。搜索覆盖主题、问题、回答、标签和笔记。</p><p><strong>“打开原对话”目前会打开整段对话。</strong>尚未验证定位到单条回答的外部接口。可先“复制定位文字”，打开原对话后按 Ctrl+F 粘贴查找。</p><p>面板读取本机可用的 Codex 收藏。远程、云端或已缺失的记录可能无法读取。完整原文保留在原始记录中；收藏夹仅独立保存你的整理信息。无需外部模型服务。</p><div class="dialog-actions"><button id="closeHelp">知道了</button></div></dialog><div id="toast" role="status" aria-live="polite"></div>
 <script>
 'use strict';
 const $=id=>document.getElementById(id),token=new URLSearchParams(location.hash.slice(1)).get('token'),mcpMode=!token&&window.parent!==window;
 let items=[],selected=null,filter='',editing=null,lastSignature='',rpcId=0,pending=new Map(),hostOrigin='*';
 const collapsedTopics=new Set();
+let knownTopics=[],topicEditing=null,topicBusy=false,refreshBusy=false;
+const deferredTopics=new Set();
 const topicOf=x=>x.topic||'其他主题';
 const timeOf=x=>Date.parse(x.date)||0;
 const compareText=(a,b)=>a.localeCompare(b,'zh-CN',{numeric:true,sensitivity:'base'});
@@ -29,24 +34,25 @@ function el(tag,cls,text){const n=document.createElement(tag);if(cls)n.className
 function toast(s){$('toast').textContent=s;clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('toast').textContent='',4500)}
 function rpc(method,params){return new Promise((resolve,reject)=>{const id=++rpcId;const timer=setTimeout(()=>{pending.delete(id);reject(Error('面板连接超时，请刷新'))},20000);pending.set(id,{resolve,reject,timer});window.parent.postMessage({jsonrpc:'2.0',id,method,params},hostOrigin)})}
 window.addEventListener('message',e=>{if(e.source!==window.parent||!mcpMode)return;if(hostOrigin!=='*'&&e.origin!==hostOrigin)return;const m=e.data;if(!m||m.jsonrpc!=='2.0')return;if(pending.has(m.id)){hostOrigin=e.origin;const p=pending.get(m.id);pending.delete(m.id);clearTimeout(p.timer);m.error?p.reject(Error(m.error.message)):p.resolve(m.result)} });
-async function api(op,args){if(mcpMode){const name={list:'list_bookmarks',save:'save_annotation',open:'open_source'}[op];const r=await rpc('tools/call',{name,arguments:args||{}});if(r.isError)throw Error(r.content?.[0]?.text||'操作失败');return r.structuredContent}if(!token)throw Error('请通过“打开收藏夹”入口打开面板');const r=await fetch('/api/'+op,{method:op==='list'?'GET':'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:op==='list'?undefined:JSON.stringify(args)});const d=await r.json();if(!r.ok)throw Error(d.error||'操作失败');return d}
+async function api(op,args){if(mcpMode){const name={list:'list_bookmarks',save:'save_annotation',open:'open_source','create-topic':'create_topic','set-topic':'set_bookmark_topic','init-topics':'initialize_topic_review'}[op];const r=await rpc('tools/call',{name,arguments:args||{}});if(r.isError)throw Error(r.content?.[0]?.text||'操作失败');return r.structuredContent}if(!token)throw Error('请通过“打开收藏夹”入口打开面板');const r=await fetch('/api/'+op,{method:op==='list'?'GET':'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:op==='list'?undefined:JSON.stringify(args)});const d=await r.json();if(!r.ok)throw Error(d.error||'操作失败');return d}
 function inline(parent,text){const rx=/(\*\*([^*]+)\*\*|`([^`]+)`|\[([^\]]+)\]\(([^\s)]+)\))/g;let last=0,m;while((m=rx.exec(text))){parent.append(document.createTextNode(text.slice(last,m.index)));let n;if(m[2])n=el('strong','',m[2]);else if(m[3])n=el('code','',m[3]);else{try{const u=new URL(m[5]);if(!['http:','https:','mailto:'].includes(u.protocol))throw Error();n=el('a','',m[4]);n.href=u.href;n.target='_blank';n.rel='noopener noreferrer'}catch{n=el('span','',m[4]+' ('+m[5]+')')}}parent.append(n);last=rx.lastIndex}parent.append(document.createTextNode(text.slice(last)))}
 function markdown(text){const root=el('div','markdown');const lines=text.replace(/<oai-mem-citation>[\s\S]*?<\/oai-mem-citation>/g,'').split('\n');let para=[];const flush=()=>{if(para.length){const p=el('p');inline(p,para.join('\n'));p.style.whiteSpace='pre-wrap';root.append(p);para=[]}};for(let i=0;i<lines.length;i++){let s=lines[i];if(s.startsWith('```')){flush();let code=[];while(++i<lines.length&&!lines[i].startsWith('```'))code.push(lines[i]);const pre=el('pre');pre.append(el('code','',code.join('\n')));root.append(pre)}else if(/^\s*\|/.test(s)&&i+1<lines.length&&/^\s*\|?[\s:|-]+\|[\s:|-]*$/.test(lines[i+1])){flush();const wrap=el('div','table-wrap'),table=el('table');const row=(s,tag)=>{const tr=el('tr');s.trim().replace(/^\||\|$/g,'').split('|').forEach(v=>{const td=el(tag);inline(td,v.trim());tr.append(td)});table.append(tr)};row(s,'th');i++;while(i+1<lines.length&&/^\s*\|/.test(lines[i+1]))row(lines[++i],'td');wrap.append(table);root.append(wrap)}else if(/^#{1,6}\s/.test(s)){flush();const h=el('h'+Math.min(4,s.match(/^#+/)[0].length+1));inline(h,s.replace(/^#+\s*/,''));root.append(h)}else if(/^\s*([-*]|\d+[.、])\s/.test(s)){flush();const list=el(/^\s*\d/.test(s)?'ol':'ul');do{const li=el('li');inline(li,lines[i].replace(/^\s*([-*]|\d+[.、])\s+/,''));list.append(li);i++}while(i<lines.length&&/^\s*([-*]|\d+[.、])\s/.test(lines[i]));i--;root.append(list)}else if(s.startsWith('>')){flush();const q=el('blockquote');inline(q,s.replace(/^>\s*/,''));root.append(q)}else if(/^\s*([-*_])\1\1+\s*$/.test(s)){flush();root.append(el('hr'))}else if(!s.trim())flush();else para.push(s)}flush();return root}
 function tagNodes(parent,tags){const row=el('div','tags');tags.forEach(t=>row.append(el('span','tag',t)));parent.append(row)}
 function dateText(s){const d=new Date(s);return isNaN(d)?'日期未知':d.toLocaleDateString('zh-CN')}
-function topicGroups(collection){
+function topicGroups(collection,includeEmpty=false){
   const map=new Map();
   for(const x of collection){const name=topicOf(x);if(!map.has(name))map.set(name,[]);map.get(name).push(x)}
+  if(includeEmpty)for(const name of knownTopics)if(!map.has(name))map.set(name,[]);
   return [...map].sort(([a,aa],[b,bb])=>{
     const order=$('groupOrder').value;
-    if(order==='recent'){const diff=Math.max(...bb.map(timeOf))-Math.max(...aa.map(timeOf));if(diff)return diff}
+    if(order==='recent'){const diff=Math.max(0,...bb.map(timeOf))-Math.max(0,...aa.map(timeOf));if(diff)return diff}
     if(order==='count'&&aa.length!==bb.length)return bb.length-aa.length;
     return compareText(a,b);
   });
 }
 function renderFilters(){
   const box=$('filters');box.replaceChildren();
-  const groups=topicGroups(items);
+  const groups=topicGroups(items,true);
   if(filter&&!groups.some(([t])=>t===filter))filter='';
   const all=el('button','chip'+(!filter?' active':''),'全部主题 · '+groups.length);
   all.onclick=()=>{filter='';renderFilters();renderList()};box.append(all);
@@ -63,10 +69,10 @@ function renderList(){
   box.replaceChildren();
   const shown=items.filter(x=>(!filter||topicOf(x)===filter)&&query.every(q=>[topicOf(x),x.title,x.question,x.answer,x.note,...x.tags].join('\n').toLowerCase().includes(q)));
   const groups=topicGroups(shown);
-  $('count').textContent=`${items.length} 条收藏 · ${new Set(items.map(topicOf)).size} 个主题`+(query.length||filter?` · 当前 ${shown.length} 条`:'');
+  $('count').textContent=`${items.length} 条收藏 · ${knownTopics.length} 个主题`+(query.length||filter?` · 当前 ${shown.length} 条`:'');
   $('collapseAll').disabled=Boolean(query.length);
   if(selected&&!shown.some(x=>x.id===selected)){selected=null;renderDetail();$('layout').classList.remove('view-detail')}
-  if(!shown.length){const e=el('div','empty');e.append(el('strong','',items.length?'没有匹配的收藏':'第一条收藏，从原生书签开始'));e.append(document.createTextNode(items.length?'试试更短的关键词或选择全部主题。':'在对话侧面的导航预览中点击书签，再回到这里。'));box.append(e);return}
+  if(!shown.length){const e=el('div','empty');e.append(el('strong','',filter&&!query.length?'这个主题还没有收藏':items.length?'没有匹配的收藏':'第一条收藏，从原生书签开始'));e.append(document.createTextNode(filter&&!query.length?'在回答里点击“更改主题”，或在新收藏弹窗中选择这个主题。':items.length?'试试更短的关键词或选择全部主题。':'在对话侧面的导航预览中点击书签，再回到这里。'));box.append(e);return}
   for(const [topic,rows] of groups){
     const section=el('details','topic-group');section.open=query.length>0||!collapsedTopics.has(topic);
     const summary=el('summary','topic-heading',topic);summary.append(el('span','muted',`${rows.length} 条`));section.append(summary);
@@ -87,13 +93,60 @@ function renderList(){
   }
 }
 async function copy(text){try{await navigator.clipboard.writeText(text);toast('已复制')}catch{toast('复制失败，请手动选择文字复制')}}
-function renderDetail(){const box=$('detail');box.replaceChildren();const x=items.find(x=>x.id===selected);if(!x){box.append(el('div','empty','选择一条收藏，阅读完整问答。'));return}const back=el('button','back','← 返回收藏列表');back.onclick=()=>$('layout').classList.remove('view-detail');box.append(back,el('div','topic-caption','主题 · '+topicOf(x)),el('h2','',x.title),el('div','muted',dateText(x.date)+' · '+x.thread_title));tagNodes(box,x.tags);const actions=el('div','actions');for(const [label,fn,cls] of [['打开原对话',async()=>{try{await api('open',{id:x.id});toast('已打开原对话；可用 Ctrl+F 查找定位文字')}catch(e){toast(e.message)}},'primary'],['复制定位文字',()=>copy((x.display_question||x.question).replace(/\s+/g,' ').slice(0,45)),''],['整理 / 笔记',()=>edit(x),''],['复制完整问答',()=>copy(x.question+'\n\n'+x.answer),'']]){const b=el('button',cls,label);b.onclick=fn;actions.append(b)}box.append(actions);if(x.status==='unavailable')box.append(el('div','notice','原生书签仍在，但本机暂时找不到这轮问答。远程记录或历史文件缺失时会出现这种情况。'));if(x.note){box.append(el('div','section-label','我的笔记'),el('div','note',x.note))}box.append(el('div','section-label','问题'),el('div','question',x.display_question||x.question||'暂无可读问题'));if(x.additional_prompts?.length){const d=el('details');d.append(el('summary','muted','本轮还有补充输入'));x.additional_prompts.forEach(p=>d.append(el('div','question',p)));box.append(d)}box.append(el('div','section-label','回答原文'));box.append(x.answer?markdown(x.answer):el('div','notice','暂未读取到已完成的最终回答。'));}
+function renderDetail(){const box=$('detail');box.replaceChildren();const x=items.find(x=>x.id===selected);if(!x){box.append(el('div','empty','选择一条收藏，阅读完整问答。'));return}const back=el('button','back','← 返回收藏列表');back.onclick=()=>$('layout').classList.remove('view-detail');box.append(back,el('div','topic-caption','主题 · '+topicOf(x)),el('h2','',x.title),el('div','muted',dateText(x.date)+' · '+x.thread_title));tagNodes(box,x.tags);const actions=el('div','actions');for(const [label,fn,cls] of [['打开原对话',async()=>{try{await api('open',{id:x.id});toast('已打开原对话；可用 Ctrl+F 查找定位文字')}catch(e){toast(e.message)}},'primary'],['复制定位文字',()=>copy((x.display_question||x.question).replace(/\s+/g,' ').slice(0,45)),''],['更改主题',()=>chooseTopic(x,false),''],['整理 / 笔记',()=>edit(x),''],['复制完整问答',()=>copy(x.question+'\n\n'+x.answer),'']]){const b=el('button',cls,label);b.onclick=fn;actions.append(b)}box.append(actions);if(x.status==='unavailable')box.append(el('div','notice','原生书签仍在，但本机暂时找不到这轮问答。远程记录或历史文件缺失时会出现这种情况。'));if(x.note){box.append(el('div','section-label','我的笔记'),el('div','note',x.note))}box.append(el('div','section-label','问题'),el('div','question',x.display_question||x.question||'暂无可读问题'));if(x.additional_prompts?.length){const d=el('details');d.append(el('summary','muted','本轮还有补充输入'));x.additional_prompts.forEach(p=>d.append(el('div','question',p)));box.append(d)}box.append(el('div','section-label','回答原文'));box.append(x.answer?markdown(x.answer):el('div','notice','暂未读取到已完成的最终回答。'));}
 function edit(x){editing=x.id;$('editTitle').value=x.title;$('editTopic').value=x.topic_manual?x.topic:'';$('editTopic').placeholder=x.auto_topic||'自动归类';$('topicHint').textContent='留空使用自动主题：'+(x.auto_topic||'其他主题')+'。也可选择已有主题或输入新主题。';$('editTags').value=x.tags.join('，');$('editNote').value=x.note;$('editor').showModal()}
-async function refresh(force=false){try{const data=await api('list');const sig=JSON.stringify(data.items);if(force||sig!==lastSignature){items=data.items;lastSignature=sig;if(selected&&!items.some(x=>x.id===selected))selected=null;renderFilters();renderList();renderDetail()}$('sync').textContent='已同步 '+new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});$('sync').classList.remove('error')}catch(e){$('sync').textContent='同步失败';$('sync').classList.add('error');if(force){$('list').replaceChildren(el('div','empty error',e.message));toast(e.message)}}}
+function pendingItems(){return items.filter(x=>!x.topic_reviewed)}
+function updatePending(){const count=pendingItems().length;$('pendingTopics').textContent='待归类 · '+count;$('pendingTopics').disabled=!count}
+function chooseTopic(x,isNew){
+  topicEditing=x.id;$('topicDialogTitle').textContent=isNew?'为新收藏选择主题':'更改这条回答的主题';
+  $('topicQuestion').textContent=x.display_question||x.question||x.title;
+  const select=$('topicChoice');select.replaceChildren();
+  const automatic=el('option','',`自动：${x.auto_topic}（仅按问题）`);automatic.value='';select.append(automatic);
+  for(const topic of knownTopics){const option=el('option','',topic);option.value='topic:'+topic;select.append(option)}
+  const create=el('option','','＋ 新建主题…');create.value='new';select.append(create);
+  select.value=x.topic_manual?'topic:'+x.topic:'';
+  $('inlineTopicName').value='';$('inlineTopicName').required=false;$('newTopicField').classList.add('hidden');
+  $('laterTopic').textContent=isNew?'稍后再选':'取消';$('topicDialog').showModal();
+}
+function promptNext(force=false){
+  if(topicBusy||document.hidden||document.querySelector('dialog[open]'))return;
+  const next=pendingItems().find(x=>force||!deferredTopics.has(x.id));if(next)chooseTopic(next,true);
+}
+async function refresh(force=false){
+  if(refreshBusy)return;refreshBusy=true;
+  try{
+    let data=await api('list');
+    if(!data.topic_review_initialized){await api('init-topics',{});data=await api('list')}
+    const sig=JSON.stringify([data.items,data.topics]);
+    if(force||sig!==lastSignature){items=data.items;knownTopics=data.topics||[...new Set(items.map(topicOf))];lastSignature=sig;if(selected&&!items.some(x=>x.id===selected))selected=null;renderFilters();renderList();renderDetail()}
+    updatePending();$('sync').textContent='已同步 '+new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});$('sync').classList.remove('error');
+  }catch(e){$('sync').textContent='同步失败';$('sync').classList.add('error');if(force){$('list').replaceChildren(el('div','empty error',e.message));toast(e.message)}}
+  finally{refreshBusy=false;promptNext()}
+}
+$('pendingTopics').onclick=()=>promptNext(true);
+$('topicChoice').onchange=()=>{const create=$('topicChoice').value==='new';$('newTopicField').classList.toggle('hidden',!create);$('inlineTopicName').required=create;if(create)$('inlineTopicName').focus()};
+$('laterTopic').onclick=()=>{deferredTopics.add(topicEditing);$('topicDialog').close();promptNext()};
+$('topicDialog').addEventListener('cancel',()=>deferredTopics.add(topicEditing));
+$('topicForm').onsubmit=async event=>{
+  event.preventDefault();if(topicBusy)return;topicBusy=true;$('confirmTopic').disabled=true;
+  try{
+    const choice=$('topicChoice').value;
+    const topic=choice==='new'?$('inlineTopicName').value.trim():choice.startsWith('topic:')?choice.slice(6):'';
+    if(choice==='new'&&!topic)throw Error('请输入新主题名称');
+    await api('set-topic',{id:topicEditing,topic});deferredTopics.delete(topicEditing);$('topicDialog').close();await refresh(true);toast('主题已保存');
+  }catch(error){toast(error.message)}finally{topicBusy=false;$('confirmTopic').disabled=false;promptNext()}
+};
+$('newTopic').onclick=()=>{$('newTopicName').value='';$('createTopicDialog').showModal()};
+$('cancelNewTopic').onclick=()=>{$('createTopicDialog').close();promptNext()};
+$('createTopicForm').onsubmit=async event=>{
+  event.preventDefault();if(topicBusy)return;topicBusy=true;
+  try{const result=await api('create-topic',{topic:$('newTopicName').value.trim()});$('createTopicDialog').close();filter=result.topic;await refresh(true);toast('主题已创建，可将收藏放入这个主题')}
+  catch(error){toast(error.message)}finally{topicBusy=false;promptNext()}
+};
 function saveView(){try{localStorage.setItem('codex-bookmarks-view',JSON.stringify({group:$('groupOrder').value,item:$('itemOrder').value}))}catch{}renderFilters();renderList()}
 $('groupOrder').onchange=saveView;$('itemOrder').onchange=saveView;
 $('collapseAll').onclick=()=>{items.forEach(x=>collapsedTopics.add(topicOf(x)));renderList()};
 $('expandAll').onclick=()=>{collapsedTopics.clear();renderList()};
 $('search').addEventListener('input',renderList);$('refresh').onclick=()=>refresh(true);$('cancelEdit').onclick=()=>$('editor').close();$('helpBtn').onclick=()=>$('help').showModal();$('closeHelp').onclick=()=>$('help').close();$('editForm').onsubmit=async e=>{e.preventDefault();try{await api('save',{id:editing,title:$('editTitle').value,topic:$('editTopic').value,tags:$('editTags').value.split(/[,，]/).map(x=>x.trim()).filter(Boolean),note:$('editNote').value});$('editor').close();await refresh(true);toast('整理信息已保存')}catch(err){toast(err.message)}};
-(async()=>{try{if(mcpMode){await rpc('ui/initialize',{appInfo:{name:'codex-bookmarks',version:'0.2.0'},appCapabilities:{},protocolVersion:'2026-01-26'});window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/initialized'},hostOrigin)}await refresh(true);setInterval(()=>{if(!document.hidden&&!$('editor').open)refresh()},10000)}catch(e){$('list').replaceChildren(el('div','empty error',e.message))}})();
+(async()=>{try{if(mcpMode){await rpc('ui/initialize',{appInfo:{name:'codex-bookmarks',version:'0.3.0'},appCapabilities:{},protocolVersion:'2026-01-26'});window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/initialized'},hostOrigin)}await refresh(true);setInterval(()=>{if(!document.hidden&&!document.querySelector('dialog[open]'))refresh()},10000)}catch(e){$('list').replaceChildren(el('div','empty error',e.message))}})();
 </script></body></html>

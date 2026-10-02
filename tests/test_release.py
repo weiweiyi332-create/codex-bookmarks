@@ -94,9 +94,46 @@ class ReleaseTests(unittest.TestCase):
         ]
         result = subprocess.run([sys.executable, '-X', 'utf8', str(self.scripts / 'server.py'), '--mcp'], input='\n'.join(json.dumps(x) for x in requests) + '\n', env=self.env, text=True, encoding='utf-8', capture_output=True, check=True)
         responses = [json.loads(x)['result'] for x in result.stdout.splitlines()]
-        self.assertEqual(len(responses[1]['tools']), 4)
+        self.assertEqual(len(responses[1]['tools']), 7)
         self.assertIn('<!doctype html>', responses[2]['contents'][0]['text'])
         self.assertEqual(len(responses[3]['structuredContent']['items']), 6)
+
+    def test_topic_creation_review_baseline_and_new_bookmark(self):
+        with self.request('/api/create-topic', 'POST', {'topic': '未来的阅读主题'}) as r:
+            self.assertEqual(json.load(r)['topic'], '未来的阅读主题')
+        with self.request('/api/init-topics', 'POST', {}) as r:
+            self.assertTrue(json.load(r)['ok'])
+        with self.request('/api/list') as r:
+            current = json.load(r)
+        self.assertIn('未来的阅读主题', current['topics'])
+        self.assertTrue(current['topic_review_initialized'])
+        self.assertTrue(all(x['topic_reviewed'] for x in current['items']))
+        # A different bookmark key models a newly saved turn. Native data is
+        # synthetic; changing the copied account key leaves question/answer intact.
+        source = Path(self.env['CODEX_HOME']) / '.codex-global-state.json'
+        previous = source.read_text()
+        try:
+            state = json.loads(previous)
+            groups = state['electron-persisted-atom-state']['pinned-conversation-turns-v1']
+            groups['new-demo-account'] = groups.pop('demo-account')
+            source.write_text(json.dumps(state), encoding='utf-8')
+            with self.request('/api/list') as r:
+                new_items = json.load(r)['items']
+            self.assertTrue(all(not x['topic_reviewed'] for x in new_items))
+            item = new_items[0]
+            with self.request('/api/save', 'POST', {'id': item['id'], 'title': '情绪建构论', 'note': '保留此笔记'}) as r:
+                self.assertTrue(json.load(r)['ok'])
+            with self.request('/api/set-topic', 'POST', {'id': item['id'], 'topic': '未来的阅读主题'}) as r:
+                self.assertTrue(json.load(r)['ok'])
+            with self.request('/api/list') as r:
+                updated = next(x for x in json.load(r)['items'] if x['id'] == item['id'])
+            self.assertEqual(updated['auto_topic'], 'EEG 基础模型')
+            self.assertEqual(updated['topic'], '未来的阅读主题')
+            self.assertEqual(updated['note'], '保留此笔记')
+            self.assertEqual(updated['tags'], item['tags'])
+            self.assertTrue(updated['topic_reviewed'])
+        finally:
+            source.write_text(previous, encoding='utf-8')
 
 if __name__ == '__main__':
     unittest.main()

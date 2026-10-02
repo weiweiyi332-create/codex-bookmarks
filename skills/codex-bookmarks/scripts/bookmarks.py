@@ -21,8 +21,7 @@ RULES = {
     '工具与软件': ['codex', '插件', '软件', '安装', '收藏', '代码', '配置'],
 }
 
-# Specific topics precede broad categories. Question matches take precedence
-# over answer matches so an incidental comparison does not move a bookmark.
+# Automatic topics use the original question only.
 TOPICS = {
     '情绪建构论': ['情绪建构论', '情绪构建论', '建构情绪', '建构论', '构建论', 'constructed emotion', 'constructionist', 'barrett', '巴雷特'],
     'EEG 基础模型': ['labram', 'neurolm', '脑电基础模型', 'eeg foundation', 'eeg大模型', '脑电大模型'],
@@ -42,13 +41,12 @@ def normalize_topic(value):
             return topic
     return value
 
-def suggest_topic(question, answer, title=''):
-    for text in (readable_question(question) + '\n' + title, answer):
-        text = text.casefold()
-        for topic, words in TOPICS.items():
-            if any(re.search(r'(?<![a-z])' + re.escape(w) + r'(?![a-z])', text) if w.isascii() else w in text for w in words):
-                return topic
-    _, tags = organize(question, answer)
+def suggest_topic(question):
+    text = readable_question(question).casefold()
+    for topic, words in TOPICS.items():
+        if any(re.search(r'(?<![a-z])' + re.escape(w) + r'(?![a-z])', text) if w.isascii() else w in text for w in words):
+            return topic
+    _, tags = organize(question, '')
     return tags[0] if tags[0] != '未分类' else '其他主题'
 
 def text_of(content):
@@ -133,6 +131,59 @@ class Library:
         self.lock = threading.RLock()
         self.cache = {}
         self.meta_path = self.data / 'annotations.json'
+        self.topic_path = self.data / 'topics.json'
+
+    def topic_catalog(self):
+        try:
+            return json.loads(self.topic_path.read_text(encoding='utf-8'))
+        except FileNotFoundError:
+            return {'topics': [], 'review_initialized': False}
+
+    def _write_json(self, path, value):
+        tmp = path.with_suffix('.tmp')
+        tmp.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding='utf-8')
+        tmp.replace(path)
+
+    def create_topic(self, topic):
+        if not isinstance(topic, str) or len(topic) > 80 or not topic.strip():
+            raise ValueError('请输入 1 至 80 字的主题名称')
+        topic = normalize_topic(topic)
+        with self.lock:
+            catalog = self.topic_catalog()
+            catalog['topics'] = sorted(set(catalog['topics']) | {topic})
+            self._write_json(self.topic_path, catalog)
+        return topic
+
+    def set_topic(self, key, topic):
+        if not re.fullmatch(r'[0-9a-f]{24}', key):
+            raise ValueError('收藏标识无效')
+        if not isinstance(topic, str) or len(topic) > 80:
+            raise ValueError('主题必须是 80 字以内的文字')
+        with self.lock:
+            meta = self._metadata()
+            entry = dict(meta.get(key, {}))
+            if topic.strip():
+                entry['topic'] = self.create_topic(topic)
+            else:
+                entry.pop('topic', None)
+            entry['topic_reviewed'] = True
+            meta[key] = entry
+            self._write_json(self.meta_path, meta)
+
+    def initialize_topic_review(self):
+        # Establish a one-time baseline: existing bookmarks must not trigger a
+        # stream of new-bookmark dialogs on upgrade. Never write Codex files.
+        with self.lock:
+            catalog = self.topic_catalog()
+            if catalog['review_initialized']:
+                return
+            items = self.list()['items']
+            meta = self._metadata()
+            for item in items:
+                meta.setdefault(item['id'], {})['topic_reviewed'] = True
+            self._write_json(self.meta_path, meta)
+            catalog['review_initialized'] = True
+            self._write_json(self.topic_path, catalog)
 
     def _metadata(self):
         try:
@@ -157,9 +208,10 @@ class Library:
             if topic is not None:
                 topic = normalize_topic(topic)
                 if topic:
-                    meta[key]['topic'] = topic
+                    meta[key]['topic'] = self.create_topic(topic)
                 else:
                     meta[key].pop('topic', None)
+                meta[key]['topic_reviewed'] = True
             tmp = self.meta_path.with_suffix('.tmp')
             tmp.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding='utf-8')
             tmp.replace(self.meta_path)
@@ -216,7 +268,7 @@ class Library:
                                 found = {'question': '', 'answer': '', 'date': '', 'additional_prompts': [], 'status': 'unavailable'}
                             title, auto_tags = organize(found['question'], found['answer'])
                             custom = meta.get(key, {})
-                            auto_topic = suggest_topic(found['question'], found['answer'], custom.get('title', ''))
+                            auto_topic = suggest_topic(found['question'])
                             thread_title = (row['name'] or row['title']) if row else '未找到本机对话'
                             thread_title = readable_question(thread_title).replace('\n', ' ')[:100]
                             items.append({**found, 'id': key, 'thread_id': thread_id, 'turn_id': turn_id,
@@ -224,11 +276,15 @@ class Library:
                                           'tags': custom.get('tags', auto_tags), 'auto_tags': auto_tags,
                                           'topic': custom.get('topic') or auto_topic, 'auto_topic': auto_topic,
                                           'topic_manual': bool(custom.get('topic')),
+                                          'topic_reviewed': bool(custom.get('topic_reviewed') or custom.get('topic')),
                                           'note': custom.get('note', ''), 'thread_title': thread_title,
                                           'url': 'codex://threads/' + thread_id,
                                           'display_question': readable_question(found['question'])})
             items.sort(key=lambda x: x['date'], reverse=True)
+            catalog = self.topic_catalog()
             return {'items': items, 'synced_at': time.time(), 'warnings': warnings,
+                    'topics': sorted(set(catalog['topics']) | {item['topic'] for item in items}),
+                    'topic_review_initialized': catalog['review_initialized'],
                     'source': '本机 Codex 原生书签', 'jump_mode': 'conversation',
                     'classification': '本地关键词自动归类'}
 

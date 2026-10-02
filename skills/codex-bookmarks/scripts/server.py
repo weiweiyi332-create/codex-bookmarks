@@ -24,9 +24,20 @@ def execute(name, args):
     if name in ('open_bookmarks', 'list_bookmarks'):
         return APP.list()
     if name == 'save_annotation':
+        item = APP.item(args.get('id'))
+        if item is None:
+            raise ValueError('此收藏已被取消，请刷新列表')
+        APP.save(args['id'], args.get('title', item['title']), args.get('tags', item['tags']), args.get('note', item['note']), args.get('topic'))
+        return {'ok': True}
+    if name == 'create_topic':
+        return {'ok': True, 'topic': APP.create_topic(args.get('topic'))}
+    if name == 'set_bookmark_topic':
         if APP.item(args.get('id')) is None:
             raise ValueError('此收藏已被取消，请刷新列表')
-        APP.save(args['id'], args.get('title', ''), args.get('tags', []), args.get('note', ''), args.get('topic'))
+        APP.set_topic(args['id'], args.get('topic', ''))
+        return {'ok': True}
+    if name == 'initialize_topic_review':
+        APP.initialize_topic_review()
         return {'ok': True}
     if name == 'open_source':
         item = APP.item(args.get('id'))
@@ -85,7 +96,7 @@ class Handler(BaseHTTPRequestHandler):
             if n < 0 or n > 100000:
                 return self.send(413, {'error': '内容过长'})
             args = json.loads(self.rfile.read(n))
-            names = {'/api/save': 'save_annotation', '/api/open': 'open_source'}
+            names = {'/api/save': 'save_annotation', '/api/open': 'open_source', '/api/create-topic': 'create_topic', '/api/set-topic': 'set_bookmark_topic', '/api/init-topics': 'initialize_topic_review'}
             name = names.get(urlsplit(self.path).path)
             if not name:
                 return self.send(404, {'error': '不存在'})
@@ -102,6 +113,9 @@ def mcp():
         'list_bookmarks': {'type': 'object', 'properties': {}, 'additionalProperties': False},
         'save_annotation': {'type': 'object', 'properties': {'id': {'type': 'string'}, 'title': {'type': 'string'}, 'tags': {'type': 'array', 'items': {'type': 'string'}}, 'note': {'type': 'string'}, 'topic': {'type': 'string', 'maxLength': 80, 'description': '自定义主题；空文字恢复自动归类，省略则保留原主题'}}, 'required': ['id']},
         'open_source': {'type': 'object', 'properties': {'id': {'type': 'string'}}, 'required': ['id']},
+        'create_topic': {'type': 'object', 'properties': {'topic': {'type': 'string', 'minLength': 1, 'maxLength': 80}}, 'required': ['topic']},
+        'set_bookmark_topic': {'type': 'object', 'properties': {'id': {'type': 'string'}, 'topic': {'type': 'string', 'maxLength': 80}}, 'required': ['id', 'topic']},
+        'initialize_topic_review': {'type': 'object', 'properties': {}, 'additionalProperties': False},
     }
     for line in sys.stdin:
         try:
@@ -110,7 +124,7 @@ def mcp():
                 continue
             method, p = req.get('method'), req.get('params', {})
             if method == 'initialize':
-                result = {'protocolVersion': p.get('protocolVersion', '2024-11-05'), 'capabilities': {'tools': {}, 'resources': {}}, 'serverInfo': {'name': 'codex-bookmarks', 'version': '0.2.0'}}
+                result = {'protocolVersion': p.get('protocolVersion', '2024-11-05'), 'capabilities': {'tools': {}, 'resources': {}}, 'serverInfo': {'name': 'codex-bookmarks', 'version': '0.3.0'}}
             elif method == 'ping':
                 result = {}
             elif method == 'tools/list':
@@ -121,7 +135,7 @@ def mcp():
                     if name == 'open_bookmarks':
                         ui['resourceUri'] = UI_URI
                         meta['openai/ui'] = {'entrypoints': [{'type': 'thread'}, {'type': 'global'}]}
-                    ts.append({'icons': ICONS, 'name': name, 'title': {'open_bookmarks': '收藏夹', 'list_bookmarks': '刷新收藏', 'save_annotation': '整理收藏', 'open_source': '打开原对话'}[name], 'description': '管理本机 Codex 原生问答收藏；来源跳转目前打开整个对话。', 'inputSchema': schema, '_meta': meta, 'annotations': {'readOnlyHint': name in ('open_bookmarks', 'list_bookmarks'), 'destructiveHint': False, 'openWorldHint': False}})
+                    ts.append({'icons': ICONS, 'name': name, 'title': {'open_bookmarks': '收藏夹', 'list_bookmarks': '刷新收藏', 'save_annotation': '整理收藏', 'open_source': '打开原对话', 'create_topic': '新建主题', 'set_bookmark_topic': '更改主题', 'initialize_topic_review': '初始化新收藏归类'}[name], 'description': '管理本机 Codex 原生问答收藏；来源跳转目前打开整个对话。', 'inputSchema': schema, '_meta': meta, 'annotations': {'readOnlyHint': name in ('open_bookmarks', 'list_bookmarks'), 'destructiveHint': False, 'openWorldHint': False}})
                 result = {'tools': ts}
             elif method == 'resources/list':
                 result = {'resources': [{'uri': UI_URI, 'name': '收藏夹', 'mimeType': 'text/html;profile=mcp-app'}]}

@@ -1,6 +1,6 @@
 {
   "name": "codex-bookmarks",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "按主题分组、排序、阅读和整理本机 Codex 原生问答书签。",
   "mcpServers": "./.mcp.json",
   "interface": {

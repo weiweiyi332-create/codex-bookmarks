@@ -1,0 +1,13 @@
+{
+  "name": "codex-bookmarks",
+  "version": "0.1.1",
+  "description": "集中阅读、搜索和整理本机 Codex 原生问答书签。",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "收藏夹",
+    "shortDescription": "原生书签同步、自动归类和全文搜索",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/icon.png",
+    "brandColor": "#2563eb"
+  }
+}

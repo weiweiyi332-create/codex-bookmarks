@@ -1,0 +1,20 @@
+{
+  "name": "local-bookmark-tools",
+  "interface": {
+    "displayName": "本机收藏工具"
+  },
+  "plugins": [
+    {
+      "name": "codex-bookmarks",
+      "source": {
+        "source": "local",
+        "path": "./plugins/codex-bookmarks"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codex 收藏夹"
+  short_description: "集中阅读、搜索和整理本机 Codex 问答收藏"
+  default_prompt: "请使用 $codex-bookmarks 打开我的收藏夹。"
